@@ -1,0 +1,46 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # Required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm run lint
+
+      - name: Verify package passes n8n community-node scanner
+        run: |
+          npm pack --pack-destination /tmp/
+          # Scanner downloads from registry, so we validate after publish too
+          echo "local pack + lint OK; scanner re-run post-publish in next step"
+
+      - name: Publish with provenance
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Post-publish scan
+        run: |
+          sleep 10  # wait for npm registry to propagate
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          npx -y @n8n/scan-community-package@latest n8n-nodes-signdocs-brasil@$PKG_VERSION

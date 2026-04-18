@@ -25,7 +25,7 @@ Restart n8n.
 
 Create credentials of type **SignDocs Brasil API**:
 
-- **Environment** — `Production` or `Homologação (HML)`
+- **Environment** — `Production` or `Staging (HML)`
 - **Authentication Method** — `Client Secret` (simplest) or `Private Key JWT (ES256)`
 - **Client ID** + either `Client Secret` or `Private Key (PEM)` + `Key ID (kid)`
 
@@ -37,7 +37,7 @@ Obtain credentials from your SignDocs tenant admin portal.
 
 | Resource | Operations |
 |----------|-----------|
-| Signing Session | Create, Get Status, Cancel, Wait for Completion |
+| Signing Session | Create, Get Status, Cancel |
 | Envelope | Create, Get, Add Session, Combined Stamp |
 | Evidence | Get |
 | Document | Upload, Download |

@@ -8,10 +8,9 @@ export const signingSessionOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['signingSession'] } },
 		options: [
+			{ name: 'Cancel', value: 'cancel', action: 'Cancel a signing session' },
 			{ name: 'Create', value: 'create', action: 'Create a signing session', description: 'Create a new signing session and return its URL' },
 			{ name: 'Get Status', value: 'getStatus', action: 'Get signing session status' },
-			{ name: 'Cancel', value: 'cancel', action: 'Cancel a signing session' },
-			{ name: 'Wait for Completion', value: 'waitForCompletion', action: 'Poll until session reaches a terminal state' },
 		],
 		default: 'create',
 	},
@@ -24,7 +23,7 @@ export const signingSessionFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		displayOptions: { show: { resource: ['signingSession'], operation: ['getStatus', 'cancel', 'waitForCompletion'] } },
+		displayOptions: { show: { resource: ['signingSession'], operation: ['getStatus', 'cancel'] } },
 	},
 	{
 		displayName: 'Purpose',
@@ -156,19 +155,5 @@ export const signingSessionFields: INodeProperties[] = [
 			{ displayName: 'Signer Email', name: 'signerEmail', type: 'string', default: '', placeholder: 'user@example.com' },
 			{ displayName: 'Signer Phone', name: 'signerPhone', type: 'string', default: '', placeholder: '+5511999999999' },
 		],
-	},
-	{
-		displayName: 'Poll Interval (Ms)',
-		name: 'pollIntervalMs',
-		type: 'number',
-		default: 3000,
-		displayOptions: { show: { resource: ['signingSession'], operation: ['waitForCompletion'] } },
-	},
-	{
-		displayName: 'Timeout (Ms)',
-		name: 'timeoutMs',
-		type: 'number',
-		default: 300000,
-		displayOptions: { show: { resource: ['signingSession'], operation: ['waitForCompletion'] } },
 	},
 ];

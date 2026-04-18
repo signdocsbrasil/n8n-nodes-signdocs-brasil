@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getClient, parseMetadata } from './GenericFunctions';
+import { apiRequest, buildSigningUrl, parseMetadata } from './GenericFunctions';
 import { signingSessionOperations, signingSessionFields } from './descriptions/SigningSessionDescription';
 import { envelopeOperations, envelopeFields } from './descriptions/EnvelopeDescription';
 import { evidenceOperations, evidenceFields } from './descriptions/EvidenceDescription';
@@ -58,7 +58,6 @@ export class SignDocsBrasil implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const client = await getClient.call(this);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -68,15 +67,15 @@ export class SignDocsBrasil implements INodeType {
 				let output: unknown;
 
 				if (resource === 'signingSession') {
-					output = await executeSigningSession.call(this, client, operation, i);
+					output = await executeSigningSession.call(this, operation, i);
 				} else if (resource === 'envelope') {
-					output = await executeEnvelope.call(this, client, operation, i);
+					output = await executeEnvelope.call(this, operation, i);
 				} else if (resource === 'evidence') {
-					output = await executeEvidence.call(this, client, operation, i);
+					output = await executeEvidence.call(this, operation, i);
 				} else if (resource === 'document') {
-					output = await executeDocument.call(this, client, operation, i);
+					output = await executeDocument.call(this, operation, i);
 				} else if (resource === 'webhook') {
-					output = await executeWebhook.call(this, client, operation, i);
+					output = await executeWebhook.call(this, operation, i);
 				} else {
 					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, { itemIndex: i });
 				}
@@ -95,14 +94,8 @@ export class SignDocsBrasil implements INodeType {
 	}
 }
 
-function buildSigningUrl(url: string, clientSecret: string): string {
-	const separator = url.includes('?') ? '&' : '?';
-	return `${url}${separator}cs=${encodeURIComponent(clientSecret)}`;
-}
-
 async function executeSigningSession(
 	this: IExecuteFunctions,
-	client: Awaited<ReturnType<typeof getClient>>,
 	operation: string,
 	i: number,
 ): Promise<unknown> {
@@ -155,26 +148,27 @@ async function executeSigningSession(
 		const metadata = parseMetadata(additionalFields.metadata as string | undefined);
 		if (metadata) request.metadata = metadata;
 
-		const idempotencyKey = additionalFields.idempotencyKey as string | undefined;
-		const session = await client.signingSessions.create(request as never, idempotencyKey);
+		const session = await apiRequest.call<
+			IExecuteFunctions,
+			[{ method: 'POST'; path: string; body: unknown; idempotencyKey?: string }],
+			Promise<{ url: string; clientSecret: string; [k: string]: unknown }>
+		>(this, {
+			method: 'POST',
+			path: '/v1/signing-sessions',
+			body: request,
+			idempotencyKey: additionalFields.idempotencyKey as string | undefined,
+		});
 		return { ...session, signingUrl: buildSigningUrl(session.url, session.clientSecret) };
 	}
 
 	if (operation === 'getStatus') {
 		const sessionId = this.getNodeParameter('sessionId', i) as string;
-		return client.signingSessions.getStatus(sessionId);
+		return apiRequest.call(this, { method: 'GET', path: `/v1/signing-sessions/${sessionId}/status` });
 	}
 
 	if (operation === 'cancel') {
 		const sessionId = this.getNodeParameter('sessionId', i) as string;
-		return client.signingSessions.cancel(sessionId);
-	}
-
-	if (operation === 'waitForCompletion') {
-		const sessionId = this.getNodeParameter('sessionId', i) as string;
-		const pollIntervalMs = this.getNodeParameter('pollIntervalMs', i, 3000) as number;
-		const timeoutMs = this.getNodeParameter('timeoutMs', i, 300000) as number;
-		return client.signingSessions.waitForCompletion(sessionId, { pollIntervalMs, timeoutMs });
+		return apiRequest.call(this, { method: 'POST', path: `/v1/signing-sessions/${sessionId}/cancel` });
 	}
 
 	throw new NodeOperationError(this.getNode(), `Unknown signing-session operation: ${operation}`, { itemIndex: i });
@@ -182,7 +176,6 @@ async function executeSigningSession(
 
 async function executeEnvelope(
 	this: IExecuteFunctions,
-	client: Awaited<ReturnType<typeof getClient>>,
 	operation: string,
 	i: number,
 ): Promise<unknown> {
@@ -214,12 +207,17 @@ async function executeEnvelope(
 		const metadata = parseMetadata(additionalFields.metadata as string | undefined);
 		if (metadata) request.metadata = metadata;
 
-		return client.envelopes.create(request as never, additionalFields.idempotencyKey as string | undefined);
+		return apiRequest.call(this, {
+			method: 'POST',
+			path: '/v1/envelopes',
+			body: request,
+			idempotencyKey: additionalFields.idempotencyKey as string | undefined,
+		});
 	}
 
 	if (operation === 'get') {
 		const envelopeId = this.getNodeParameter('envelopeId', i) as string;
-		return client.envelopes.get(envelopeId);
+		return apiRequest.call(this, { method: 'GET', path: `/v1/envelopes/${envelopeId}` });
 	}
 
 	if (operation === 'addSession') {
@@ -249,13 +247,24 @@ async function executeEnvelope(
 		const metadata = parseMetadata(additional.metadata as string | undefined);
 		if (metadata) request.metadata = metadata;
 
-		const session = await client.envelopes.addSession(envelopeId, request as never);
+		const session = await apiRequest.call<
+			IExecuteFunctions,
+			[{ method: 'POST'; path: string; body: unknown }],
+			Promise<{ url: string; clientSecret: string; [k: string]: unknown }>
+		>(this, {
+			method: 'POST',
+			path: `/v1/envelopes/${envelopeId}/sessions`,
+			body: request,
+		});
 		return { ...session, signingUrl: buildSigningUrl(session.url, session.clientSecret) };
 	}
 
 	if (operation === 'combinedStamp') {
 		const envelopeId = this.getNodeParameter('envelopeId', i) as string;
-		return client.envelopes.combinedStamp(envelopeId);
+		return apiRequest.call(this, {
+			method: 'POST',
+			path: `/v1/envelopes/${envelopeId}/combined-stamp`,
+		});
 	}
 
 	throw new NodeOperationError(this.getNode(), `Unknown envelope operation: ${operation}`, { itemIndex: i });
@@ -263,20 +272,18 @@ async function executeEnvelope(
 
 async function executeEvidence(
 	this: IExecuteFunctions,
-	client: Awaited<ReturnType<typeof getClient>>,
 	operation: string,
 	i: number,
 ): Promise<unknown> {
 	if (operation === 'get') {
 		const transactionId = this.getNodeParameter('transactionId', i) as string;
-		return client.evidence.get(transactionId);
+		return apiRequest.call(this, { method: 'GET', path: `/v1/transactions/${transactionId}/evidence` });
 	}
 	throw new NodeOperationError(this.getNode(), `Unknown evidence operation: ${operation}`, { itemIndex: i });
 }
 
 async function executeDocument(
 	this: IExecuteFunctions,
-	client: Awaited<ReturnType<typeof getClient>>,
 	operation: string,
 	i: number,
 ): Promise<unknown> {
@@ -293,11 +300,18 @@ async function executeDocument(
 		} else {
 			content = this.getNodeParameter('documentContent', i) as string;
 		}
-		return client.documents.upload(transactionId, { content, filename });
+		return apiRequest.call(this, {
+			method: 'POST',
+			path: `/v1/transactions/${transactionId}/document`,
+			body: { content, filename },
+		});
 	}
 
 	if (operation === 'download') {
-		return client.documents.download(transactionId);
+		return apiRequest.call(this, {
+			method: 'GET',
+			path: `/v1/transactions/${transactionId}/download`,
+		});
 	}
 
 	throw new NodeOperationError(this.getNode(), `Unknown document operation: ${operation}`, { itemIndex: i });
@@ -305,26 +319,29 @@ async function executeDocument(
 
 async function executeWebhook(
 	this: IExecuteFunctions,
-	client: Awaited<ReturnType<typeof getClient>>,
 	operation: string,
 	i: number,
 ): Promise<unknown> {
 	if (operation === 'register') {
 		const url = this.getNodeParameter('url', i) as string;
 		const events = this.getNodeParameter('events', i) as string[];
-		return client.webhooks.register({ url, events: events as never });
+		return apiRequest.call(this, {
+			method: 'POST',
+			path: '/v1/webhooks',
+			body: { url, events },
+		});
 	}
 	if (operation === 'list') {
-		return client.webhooks.list();
+		return apiRequest.call(this, { method: 'GET', path: '/v1/webhooks' });
 	}
 	if (operation === 'delete') {
 		const webhookId = this.getNodeParameter('webhookId', i) as string;
-		await client.webhooks.delete(webhookId);
+		await apiRequest.call(this, { method: 'DELETE', path: `/v1/webhooks/${webhookId}` });
 		return { webhookId, deleted: true };
 	}
 	if (operation === 'test') {
 		const webhookId = this.getNodeParameter('webhookId', i) as string;
-		return client.webhooks.test(webhookId);
+		return apiRequest.call(this, { method: 'POST', path: `/v1/webhooks/${webhookId}/test` });
 	}
 	throw new NodeOperationError(this.getNode(), `Unknown webhook operation: ${operation}`, { itemIndex: i });
 }
