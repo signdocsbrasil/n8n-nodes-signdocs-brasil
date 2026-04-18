@@ -1,8 +1,13 @@
 # Changelog
 
-## 0.2.2 — 2026-04-18
+## 0.2.3 — 2026-04-18
 
-- No functional changes. First release published via GitHub Actions with npm provenance — required for verified community-node submissions after 2026-05-01.
+- No functional changes. First successful release published via GitHub Actions with npm provenance — required for verified community-node submissions after 2026-05-01.
+- Fix CI: `npm ci --ignore-scripts` avoids a native-compile failure in `isolated-vm` (transitive dev dep of `n8n-workflow`) on Node 20+.
+
+## 0.2.2 — 2026-04-18 (skipped)
+
+- Tagged but GitHub Actions workflow run failed at `npm ci` due to `isolated-vm` native compile error. No npm release.
 
 ## 0.2.1 — 2026-04-18
 
