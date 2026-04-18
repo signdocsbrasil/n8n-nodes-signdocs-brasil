@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4 — 2026-04-18
+
+- Metadata-only: update package `author.email` to `administrativo@signdocs.com.br` so it matches the n8n Creator Portal account for the verification application.
+
 ## 0.2.3 — 2026-04-18
 
 - No functional changes. First successful release published via GitHub Actions with npm provenance — required for verified community-node submissions after 2026-05-01.

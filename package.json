@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-signdocs-brasil",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "n8n community node for SignDocs Brasil — electronic signatures with biometrics, OTP, clickwrap, and ICP-Brasil A1/A3 digital certificates (MP 2.200-2 compliant)",
   "keywords": [
     "n8n-community-node-package",
@@ -15,7 +15,7 @@
   "homepage": "https://docs.signdocs.com.br",
   "author": {
     "name": "SignDocs Brasil",
-    "email": "dev@signdocs.com.br",
+    "email": "administrativo@signdocs.com.br",
     "url": "https://signdocs.com.br"
   },
   "repository": {
