@@ -34,10 +34,10 @@ export class SignDocsBrasil implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Signing Session', value: 'signingSession' },
+					{ name: 'Document', value: 'document' },
 					{ name: 'Envelope', value: 'envelope' },
 					{ name: 'Evidence', value: 'evidence' },
-					{ name: 'Document', value: 'document' },
+					{ name: 'Signing Session', value: 'signingSession' },
 					{ name: 'Webhook', value: 'webhook' },
 				],
 				default: 'signingSession',

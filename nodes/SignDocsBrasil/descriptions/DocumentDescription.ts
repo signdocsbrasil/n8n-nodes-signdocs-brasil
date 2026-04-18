@@ -9,7 +9,7 @@ export const documentOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['document'] } },
 		options: [
 			{ name: 'Upload', value: 'upload', action: 'Upload a document to an existing transaction' },
-			{ name: 'Download', value: 'download', action: 'Get download URLs for a transaction document' },
+			{ name: 'Download', value: 'download', action: 'Get a signed document download link' },
 		],
 		default: 'upload',
 	},
@@ -30,7 +30,7 @@ export const documentFields: INodeProperties[] = [
 		type: 'options',
 		default: 'binary',
 		options: [
-			{ name: 'Binary Property (from previous node)', value: 'binary' },
+			{ name: 'Binary Property (From Previous Node)', value: 'binary' },
 			{ name: 'Base64 String', value: 'base64' },
 		],
 		displayOptions: { show: { resource: ['document'], operation: ['upload'] } },

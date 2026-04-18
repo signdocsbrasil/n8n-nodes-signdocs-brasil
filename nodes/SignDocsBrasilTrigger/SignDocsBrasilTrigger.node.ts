@@ -6,6 +6,7 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { verifyWebhookSignature } from '@signdocs-brasil/api';
 
 import { getClient } from '../SignDocsBrasil/GenericFunctions';
@@ -64,9 +65,8 @@ export class SignDocsBrasilTrigger implements INodeType {
 				const client = await getClient.call(this);
 
 				if (webhookUrl.includes('localhost') || webhookUrl.includes('127.0.0.1') || /\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(webhookUrl)) {
-					throw new Error(
-						`SignDocs Brasil cannot deliver webhooks to a private URL (${webhookUrl}). ` +
-						`Start n8n with \`n8n start --tunnel\` to get a public URL, or set WEBHOOK_URL to a publicly reachable https:// endpoint.`,
+					throw new ApplicationError(
+						`SignDocs Brasil cannot deliver webhooks to a private URL (${webhookUrl}). Set WEBHOOK_URL to a publicly reachable https:// endpoint (e.g., via a tunnel like cloudflared/ngrok/localtunnel).`,
 					);
 				}
 
@@ -76,9 +76,8 @@ export class SignDocsBrasilTrigger implements INodeType {
 				} catch (err) {
 					const anyErr = err as { status?: number; message?: string };
 					if (anyErr.status === 403) {
-						throw new Error(
-							`SignDocs Brasil rejected the webhook URL (${webhookUrl}). ` +
-							`The URL must be publicly reachable over https. If you are running n8n locally, use \`n8n start --tunnel\` or set WEBHOOK_URL to a tunnel endpoint.`,
+						throw new ApplicationError(
+							`SignDocs Brasil rejected the webhook URL (${webhookUrl}). The URL must be publicly reachable over https. If you are running n8n locally, set WEBHOOK_URL to a tunnel endpoint.`,
 						);
 					}
 					throw err;

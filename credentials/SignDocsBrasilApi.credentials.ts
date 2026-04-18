@@ -7,7 +7,8 @@ import type {
 export class SignDocsBrasilApi implements ICredentialType {
 	name = 'signDocsBrasilApi';
 	displayName = 'SignDocs Brasil API';
-	documentationUrl = 'https://docs.signdocs.com.br/api/authentication';
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-documentation-url-miscased
+	documentationUrl = 'https://docs.signdocs.com.br/#tag/authentication';
 
 	properties: INodeProperties[] = [
 		{
@@ -55,7 +56,7 @@ export class SignDocsBrasilApi implements ICredentialType {
 			displayOptions: { show: { authMode: ['privateKeyJwt'] } },
 		},
 		{
-			displayName: 'Key ID (kid)',
+			displayName: 'Key ID (Kid)',
 			name: 'kid',
 			type: 'string',
 			default: '',
