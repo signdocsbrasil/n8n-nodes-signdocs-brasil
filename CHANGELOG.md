@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 — 2026-04-18
+
+- No functional changes. First release published via GitHub Actions with npm provenance — required for verified community-node submissions after 2026-05-01.
+
 ## 0.2.1 — 2026-04-18
 
 - Remove `Wait for Completion` operation on Signing Session to comply with n8n community-node verification rules (no `setTimeout` in-process polling). Use the `SignDocs Brasil Trigger` node for completion events instead, or chain a `Wait` + `Get Status` manually.
