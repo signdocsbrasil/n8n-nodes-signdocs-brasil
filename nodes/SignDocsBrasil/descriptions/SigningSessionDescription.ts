@@ -148,6 +148,23 @@ export const signingSessionFields: INodeProperties[] = [
 					{ name: 'SMS', value: 'sms' },
 				],
 			},
+			{
+				displayName: 'Owner Email',
+				name: 'ownerEmail',
+				type: 'string',
+				default: '',
+				placeholder: 'requester@example.com',
+				description:
+					'If set, SignDocs sends a signing invitation to Signer Email (when it differs) and a completion notification to this address when the signer finishes. Omit to keep the traditional behavior (deliver the signing URL yourself + rely on webhooks).',
+			},
+			{
+				displayName: 'Owner Name',
+				name: 'ownerName',
+				type: 'string',
+				default: '',
+				placeholder: 'Maria Souza',
+				description: 'Shown in the invite email footer and in the completion-notification greeting',
+			},
 			{ displayName: 'Return URL', name: 'returnUrl', type: 'string', default: '' },
 			{ displayName: 'Signer Birth Date', name: 'signerBirthDate', type: 'string', default: '', placeholder: 'YYYY-MM-DD' },
 			{ displayName: 'Signer CNPJ', name: 'signerCnpj', type: 'string', default: '' },

@@ -145,6 +145,12 @@ async function executeSigningSession(
 		if (additionalFields.cancelUrl) request.cancelUrl = additionalFields.cancelUrl;
 		if (additionalFields.locale) request.locale = additionalFields.locale;
 		if (additionalFields.expiresInMinutes) request.expiresInMinutes = additionalFields.expiresInMinutes;
+		if (additionalFields.ownerEmail || additionalFields.ownerName) {
+			request.owner = {
+				...(additionalFields.ownerEmail ? { email: additionalFields.ownerEmail } : {}),
+				...(additionalFields.ownerName ? { name: additionalFields.ownerName } : {}),
+			};
+		}
 		const metadata = parseMetadata(additionalFields.metadata as string | undefined);
 		if (metadata) request.metadata = metadata;
 
@@ -204,6 +210,12 @@ async function executeEnvelope(
 		if (additionalFields.cancelUrl) request.cancelUrl = additionalFields.cancelUrl;
 		if (additionalFields.locale) request.locale = additionalFields.locale;
 		if (additionalFields.expiresInMinutes) request.expiresInMinutes = additionalFields.expiresInMinutes;
+		if (additionalFields.ownerEmail || additionalFields.ownerName) {
+			request.owner = {
+				...(additionalFields.ownerEmail ? { email: additionalFields.ownerEmail } : {}),
+				...(additionalFields.ownerName ? { name: additionalFields.ownerName } : {}),
+			};
+		}
 		const metadata = parseMetadata(additionalFields.metadata as string | undefined);
 		if (metadata) request.metadata = metadata;
 
@@ -332,7 +344,14 @@ async function executeWebhook(
 		});
 	}
 	if (operation === 'list') {
-		return apiRequest.call(this, { method: 'GET', path: '/v1/webhooks' });
+		// GET /v1/webhooks returns { webhooks: Webhook[], count: number }.
+		// Unwrap to a bare array so downstream n8n nodes can iterate directly;
+		// accept a bare-array shape defensively for legacy test fixtures.
+		const response = (await apiRequest.call(this, { method: 'GET', path: '/v1/webhooks' })) as
+			| { webhooks?: unknown[]; count?: number }
+			| unknown[];
+		if (Array.isArray(response)) return response;
+		return response?.webhooks ?? [];
 	}
 	if (operation === 'delete') {
 		const webhookId = this.getNodeParameter('webhookId', i) as string;

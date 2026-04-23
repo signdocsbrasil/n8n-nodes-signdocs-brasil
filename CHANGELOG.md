@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-04-23
+
+- **Owner Email / Owner Name** fields added to Additional Fields on both `Signing Session > Create` and `Envelope > Create`. When set, SignDocs Brasil automatically emails the signer an invitation to sign (if their email differs from the owner's) and notifies the owner by email as each signer completes. Omit the fields to keep the traditional "deliver the signing URL yourself and poll/webhook for completion" behavior.
+- **Expanded webhook event catalog** on the Trigger node and `Webhook > Register`: added the 10 events the API emits that were previously missing from the multi-select — `TRANSACTION.FALLBACK`, `TRANSACTION.DEADLINE_APPROACHING` (NT65), `STEP.PURPOSE_DISCLOSURE_SENT` (NT65), `SIGNING_SESSION.{CREATED,COMPLETED,CANCELLED,EXPIRED}`, `ENVELOPE.ALL_SIGNED`, `QUOTA.WARNING`, `API.DEPRECATION_NOTICE`. Events tagged `[NT65]` are only emitted for tenants with `nt65ComplianceEnabled` (INSS consignado flow).
+- **Fix:** `Webhook > List` now returns a bare `Webhook[]` array instead of the raw `{webhooks, count}` envelope. Downstream n8n nodes that iterate over the list output used to trip on the object shape; they now work as expected.
+
 ## 0.2.4 — 2026-04-18
 
 - Metadata-only: update package `author.email` to `administrativo@signdocs.com.br` so it matches the n8n Creator Portal account for the verification application.

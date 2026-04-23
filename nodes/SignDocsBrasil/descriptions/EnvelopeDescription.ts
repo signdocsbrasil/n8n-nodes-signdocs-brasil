@@ -102,6 +102,23 @@ export const envelopeFields: INodeProperties[] = [
 				],
 			},
 			{ displayName: 'Metadata (JSON)', name: 'metadata', type: 'json', default: '{}' },
+			{
+				displayName: 'Owner Email',
+				name: 'ownerEmail',
+				type: 'string',
+				default: '',
+				placeholder: 'requester@example.com',
+				description:
+					'If set, every signer added to this envelope automatically receives an invite email with their signing URL, and this address receives a completion notification per signer (including a final "all signed" email). Omit to keep the traditional behavior.',
+			},
+			{
+				displayName: 'Owner Name',
+				name: 'ownerName',
+				type: 'string',
+				default: '',
+				placeholder: 'Maria Souza',
+				description: 'Shown in the invite email footer and in the completion-notification greeting',
+			},
 			{ displayName: 'Return URL', name: 'returnUrl', type: 'string', default: '' },
 		],
 	},
