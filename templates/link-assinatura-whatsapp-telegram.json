@@ -1,0 +1,176 @@
+{
+  "name": "SignDocs Brasil · Entregar link de assinatura via WhatsApp / Telegram / Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "signdocs-link-delivery",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-in",
+      "name": "Webhook · Receber requisição",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 340],
+      "webhookId": "signdocs-link-delivery-webhook"
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"body\"][\"documentUrl\"]}}",
+        "options": { "response": { "response": { "responseFormat": "file", "outputPropertyName": "data" } } }
+      },
+      "id": "http-download",
+      "name": "HTTP · Baixar PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 340]
+    },
+    {
+      "parameters": {
+        "resource": "signingSession",
+        "operation": "create",
+        "purpose": "DOCUMENT_SIGNATURE",
+        "policyProfile": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"policyProfile\"] || \"OTP\"}}",
+        "signerName": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerName\"]}}",
+        "signerExternalId": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerExternalId\"]}}",
+        "documentSource": "binary",
+        "binaryProperty": "data",
+        "filename": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"filename\"] || \"contrato.pdf\"}}",
+        "additionalFields": {
+          "signerCpf": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerCpf\"]}}",
+          "signerEmail": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerEmail\"]}}",
+          "signerPhone": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerPhone\"]}}",
+          "otpChannel": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"channel\"] === \"whatsapp\" || $node[\"Webhook · Receber requisição\"].json[\"body\"][\"channel\"] === \"telegram\" ? \"sms\" : \"email\"}}",
+          "expiresInMinutes": 2880,
+          "locale": "pt-BR"
+        }
+      },
+      "id": "signdocs-session",
+      "name": "SignDocs Brasil · Criar sessão",
+      "type": "n8n-nodes-signdocs-brasil.signDocsBrasil",
+      "typeVersion": 1,
+      "position": [720, 340],
+      "credentials": {
+        "signDocsBrasilApi": { "id": "REPLACE", "name": "SignDocs Brasil" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "input1",
+        "dataType": "string",
+        "value1": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"channel\"]}}",
+        "rules": {
+          "rules": [
+            { "value2": "whatsapp", "output": 0 },
+            { "value2": "telegram", "output": 1 },
+            { "value2": "email", "output": 2 }
+          ]
+        },
+        "fallbackOutput": 2
+      },
+      "id": "switch-channel",
+      "name": "Switch · Canal de entrega",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [960, 340]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "WA_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerPhone\"]}}",
+        "textBody": "=Olá {{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerName\"]}}, seu documento está pronto para assinatura:\n\n{{$node[\"SignDocs Brasil · Criar sessão\"].json[\"signingUrl\"]}}\n\nAssinatura com validade jurídica (MP 2.200-2/2001)."
+      },
+      "id": "whatsapp-send",
+      "name": "WhatsApp Business",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1200, 200],
+      "credentials": {
+        "whatsAppApi": { "id": "REPLACE", "name": "WhatsApp Business" }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"telegramChatId\"]}}",
+        "text": "=Olá {{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerName\"]}}, seu documento está pronto para assinatura:\n\n{{$node[\"SignDocs Brasil · Criar sessão\"].json[\"signingUrl\"]}}\n\nAssinatura com validade jurídica (MP 2.200-2/2001).",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-send",
+      "name": "Telegram · Enviar mensagem",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1200, 360],
+      "credentials": {
+        "telegramApi": { "id": "REPLACE", "name": "Telegram" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerEmail\"]}}",
+        "subject": "=Documento para assinatura — SignDocs Brasil",
+        "message": "=Olá {{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerName\"]}},\n\nSeu documento está pronto para assinatura:\n\n{{$node[\"SignDocs Brasil · Criar sessão\"].json[\"signingUrl\"]}}\n\nAssinatura com validade jurídica (MP 2.200-2/2001).",
+        "options": {}
+      },
+      "id": "gmail-fallback",
+      "name": "Gmail · Enviar link",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1200, 520],
+      "credentials": {
+        "gmailOAuth2": { "id": "REPLACE", "name": "Gmail" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'created', signingSessionId: $node[\"SignDocs Brasil · Criar sessão\"].json[\"id\"], signingUrl: $node[\"SignDocs Brasil · Criar sessão\"].json[\"signingUrl\"] } }}"
+      },
+      "id": "respond",
+      "name": "Webhook · Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1440, 340]
+    }
+  ],
+  "connections": {
+    "Webhook · Receber requisição": {
+      "main": [[{ "node": "HTTP · Baixar PDF", "type": "main", "index": 0 }]]
+    },
+    "HTTP · Baixar PDF": {
+      "main": [[{ "node": "SignDocs Brasil · Criar sessão", "type": "main", "index": 0 }]]
+    },
+    "SignDocs Brasil · Criar sessão": {
+      "main": [[{ "node": "Switch · Canal de entrega", "type": "main", "index": 0 }]]
+    },
+    "Switch · Canal de entrega": {
+      "main": [
+        [{ "node": "WhatsApp Business", "type": "main", "index": 0 }],
+        [{ "node": "Telegram · Enviar mensagem", "type": "main", "index": 0 }],
+        [{ "node": "Gmail · Enviar link", "type": "main", "index": 0 }]
+      ]
+    },
+    "WhatsApp Business": {
+      "main": [[{ "node": "Webhook · Responder", "type": "main", "index": 0 }]]
+    },
+    "Telegram · Enviar mensagem": {
+      "main": [[{ "node": "Webhook · Responder", "type": "main", "index": 0 }]]
+    },
+    "Gmail · Enviar link": {
+      "main": [[{ "node": "Webhook · Responder", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Endpoint HTTP que recebe documento + dados do signatário e entrega o link de assinatura SignDocs Brasil via WhatsApp, Telegram ou Email. A3 funciona porque o signatário clica no link no próprio desktop onde o token físico está conectado — o canal é apenas transporte.",
+    "templateAuthor": "SignDocs Brasil",
+    "requiredCredentials": ["SignDocs Brasil", "WhatsApp Business", "Telegram", "Gmail"]
+  },
+  "tags": [{ "name": "SignDocs Brasil" }, { "name": "WhatsApp" }, { "name": "Telegram" }, { "name": "A3" }]
+}

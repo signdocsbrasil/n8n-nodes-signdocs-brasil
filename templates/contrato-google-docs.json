@@ -1,0 +1,142 @@
+{
+  "name": "SignDocs Brasil · Contrato automático via Google Docs",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            { "mode": "everyMinute" }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "SHEET_ID_AQUI",
+          "mode": "list",
+          "cachedResultName": "Contratos – Pendentes"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "gs-trigger",
+      "name": "Google Sheets Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE", "name": "Google Sheets" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "create",
+        "folderId": {
+          "__rl": true,
+          "value": "DRIVE_FOLDER_ID",
+          "mode": "list"
+        },
+        "title": "=Contrato - {{$json[\"signer_name\"]}} - {{$now.format('yyyy-MM-dd')}}",
+        "driveId": { "__rl": true, "mode": "list", "value": "My Drive" }
+      },
+      "id": "docs-create",
+      "name": "Google Docs · Gerar contrato",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "credentials": {
+        "googleDocsOAuth2Api": { "id": "REPLACE", "name": "Google Docs" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{$node[\"Google Docs · Gerar contrato\"].json[\"id\"]}}",
+        "options": {
+          "googleFileConversion": {
+            "conversion": { "docsToFormat": "application/pdf" }
+          }
+        }
+      },
+      "id": "drive-download-pdf",
+      "name": "Google Drive · Exportar PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [720, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "REPLACE", "name": "Google Drive" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "signingSession",
+        "operation": "create",
+        "purpose": "DOCUMENT_SIGNATURE",
+        "policyProfile": "OTP",
+        "signerName": "={{$node[\"Google Sheets Trigger\"].json[\"signer_name\"]}}",
+        "signerExternalId": "={{$node[\"Google Sheets Trigger\"].json[\"signer_id\"]}}",
+        "documentSource": "binary",
+        "binaryProperty": "data",
+        "filename": "=contrato-{{$now.format('yyyy-MM-dd')}}.pdf",
+        "additionalFields": {
+          "signerCpf": "={{$node[\"Google Sheets Trigger\"].json[\"cpf\"]}}",
+          "signerEmail": "={{$node[\"Google Sheets Trigger\"].json[\"email\"]}}",
+          "otpChannel": "email",
+          "expiresInMinutes": 2880,
+          "locale": "pt-BR"
+        }
+      },
+      "id": "signdocs-create",
+      "name": "SignDocs Brasil · Criar sessão",
+      "type": "n8n-nodes-signdocs-brasil.signDocsBrasil",
+      "typeVersion": 1,
+      "position": [960, 300],
+      "credentials": {
+        "signDocsBrasilApi": { "id": "REPLACE", "name": "SignDocs Brasil" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$node[\"Google Sheets Trigger\"].json[\"email\"]}}",
+        "subject": "=Contrato para assinatura — {{$node[\"Google Sheets Trigger\"].json[\"signer_name\"]}}",
+        "message": "=Olá {{$node[\"Google Sheets Trigger\"].json[\"signer_name\"]}},\n\nSeu contrato está pronto para assinatura eletrônica.\n\nLink: {{$node[\"SignDocs Brasil · Criar sessão\"].json[\"signingUrl\"]}}\n\nAssinaturas com validade jurídica (MP 2.200-2/2001).",
+        "options": {}
+      },
+      "id": "gmail-send",
+      "name": "Gmail · Enviar link",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1200, 300],
+      "credentials": {
+        "gmailOAuth2": { "id": "REPLACE", "name": "Gmail" }
+      }
+    }
+  ],
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [[{ "node": "Google Docs · Gerar contrato", "type": "main", "index": 0 }]]
+    },
+    "Google Docs · Gerar contrato": {
+      "main": [[{ "node": "Google Drive · Exportar PDF", "type": "main", "index": 0 }]]
+    },
+    "Google Drive · Exportar PDF": {
+      "main": [[{ "node": "SignDocs Brasil · Criar sessão", "type": "main", "index": 0 }]]
+    },
+    "SignDocs Brasil · Criar sessão": {
+      "main": [[{ "node": "Gmail · Enviar link", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Dispara quando uma nova linha é adicionada em uma planilha Google Sheets. Gera contrato no Google Docs, exporta como PDF, cria sessão de assinatura no SignDocs Brasil e envia o link por e-mail ao signatário.",
+    "templateAuthor": "SignDocs Brasil",
+    "requiredCredentials": ["Google Sheets", "Google Docs", "Google Drive", "Gmail", "SignDocs Brasil"]
+  },
+  "tags": [{ "name": "SignDocs Brasil" }, { "name": "ICP-Brasil" }, { "name": "Contrato" }]
+}

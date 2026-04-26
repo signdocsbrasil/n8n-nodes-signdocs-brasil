@@ -1,0 +1,180 @@
+{
+  "name": "SignDocs Brasil · Pipeline imobiliário (lead → proposta → contrato → assinatura)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "imobiliaria-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-lead",
+      "name": "Webhook · Lead recebido",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "imobiliaria-lead-webhook"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "CRM_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": { "__rl": true, "value": "Leads", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "nome": "={{$json[\"body\"][\"nome\"]}}",
+            "cpf": "={{$json[\"body\"][\"cpf\"]}}",
+            "email": "={{$json[\"body\"][\"email\"]}}",
+            "telefone": "={{$json[\"body\"][\"telefone\"]}}",
+            "imovel": "={{$json[\"body\"][\"imovelId\"]}}",
+            "valor": "={{$json[\"body\"][\"valor\"]}}",
+            "origem": "={{$json[\"body\"][\"origem\"] || \"website\"}}",
+            "status": "proposta_gerada"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-crm",
+      "name": "Google Sheets · CRM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [440, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE", "name": "Google Sheets" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "operation": "create",
+        "title": "=Proposta - {{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"nome\"]}} - Imóvel {{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"imovelId\"]}}",
+        "folderId": {
+          "__rl": true,
+          "value": "PROPOSTAS_FOLDER_ID",
+          "mode": "list"
+        },
+        "driveId": { "__rl": true, "mode": "list", "value": "My Drive" }
+      },
+      "id": "docs-proposta",
+      "name": "Google Docs · Gerar proposta",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "credentials": {
+        "googleDocsOAuth2Api": { "id": "REPLACE", "name": "Google Docs" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{$node[\"Google Docs · Gerar proposta\"].json[\"id\"]}}",
+        "options": {
+          "googleFileConversion": {
+            "conversion": { "docsToFormat": "application/pdf" }
+          }
+        }
+      },
+      "id": "drive-pdf",
+      "name": "Google Drive · Exportar PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [920, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "REPLACE", "name": "Google Drive" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "signingSession",
+        "operation": "create",
+        "purpose": "DOCUMENT_SIGNATURE",
+        "policyProfile": "OTP",
+        "signerName": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"nome\"]}}",
+        "signerExternalId": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"leadId\"]}}",
+        "documentSource": "binary",
+        "binaryProperty": "data",
+        "filename": "=proposta-imovel-{{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"imovelId\"]}}.pdf",
+        "additionalFields": {
+          "signerCpf": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"cpf\"]}}",
+          "signerEmail": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"email\"]}}",
+          "signerPhone": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"telefone\"]}}",
+          "otpChannel": "sms",
+          "expiresInMinutes": 4320,
+          "locale": "pt-BR",
+          "actionDescription": "=Proposta de compra do imóvel {{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"imovelId\"]}}",
+          "metadata": "={ \"imovelId\": \"{{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"imovelId\"]}}\", \"valor\": \"{{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"valor\"]}}\" }"
+        }
+      },
+      "id": "signdocs-proposta",
+      "name": "SignDocs Brasil · Sessão de assinatura",
+      "type": "n8n-nodes-signdocs-brasil.signDocsBrasil",
+      "typeVersion": 1,
+      "position": [1160, 300],
+      "credentials": {
+        "signDocsBrasilApi": { "id": "REPLACE", "name": "SignDocs Brasil" }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "WA_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"telefone\"]}}",
+        "textBody": "=Olá {{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"nome\"]}}! 🏠\n\nSua proposta para o imóvel {{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"imovelId\"]}} está pronta para assinatura:\n\n{{$node[\"SignDocs Brasil · Sessão de assinatura\"].json[\"signingUrl\"]}}\n\nValor: R$ {{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"valor\"]}}\n\nAssinatura com validade jurídica."
+      },
+      "id": "whatsapp-proposta",
+      "name": "WhatsApp · Enviar proposta",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1400, 300],
+      "credentials": {
+        "whatsAppApi": { "id": "REPLACE", "name": "WhatsApp Business" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'proposta_enviada', signingSessionId: $node[\"SignDocs Brasil · Sessão de assinatura\"].json[\"id\"] } }}"
+      },
+      "id": "respond-lead",
+      "name": "Webhook · Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 300]
+    }
+  ],
+  "connections": {
+    "Webhook · Lead recebido": {
+      "main": [[{ "node": "Google Sheets · CRM", "type": "main", "index": 0 }]]
+    },
+    "Google Sheets · CRM": {
+      "main": [[{ "node": "Google Docs · Gerar proposta", "type": "main", "index": 0 }]]
+    },
+    "Google Docs · Gerar proposta": {
+      "main": [[{ "node": "Google Drive · Exportar PDF", "type": "main", "index": 0 }]]
+    },
+    "Google Drive · Exportar PDF": {
+      "main": [[{ "node": "SignDocs Brasil · Sessão de assinatura", "type": "main", "index": 0 }]]
+    },
+    "SignDocs Brasil · Sessão de assinatura": {
+      "main": [[{ "node": "WhatsApp · Enviar proposta", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp · Enviar proposta": {
+      "main": [[{ "node": "Webhook · Responder", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Fluxo completo de captura de lead imobiliário: recebe dados do lead via HTTP, registra no CRM (Google Sheets), gera proposta no Google Docs, exporta como PDF, cria sessão de assinatura no SignDocs Brasil e envia o link pelo WhatsApp. Opcional: pareie com um segundo workflow que recebe o trigger TRANSACTION.COMPLETED do SignDocs Brasil para atualizar o status no CRM e arquivar no Drive.",
+    "templateAuthor": "SignDocs Brasil",
+    "requiredCredentials": ["Google Sheets", "Google Docs", "Google Drive", "WhatsApp Business", "SignDocs Brasil"]
+  },
+  "tags": [{ "name": "SignDocs Brasil" }, { "name": "Imobiliário" }, { "name": "WhatsApp" }, { "name": "CRM" }]
+}

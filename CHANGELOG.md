@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 — 2026-04-25
+
+- **Templates fix:** all three workflow templates (`contrato-google-docs.json`, `link-assinatura-whatsapp-telegram.json`, `pipeline-imobiliario.json`) failed to execute in n8n because of invalid SignDocs node parameter values. Verified by importing each template into a clean n8n 2.17.7 instance with the community node loaded — every template raised `WorkflowHasIssuesError` before this release.
+  - Replace `purpose: "SIGN_DOCUMENT"` with `"DOCUMENT_SIGNATURE"` (the only document-signing value the node accepts; `ACTION_AUTHENTICATION` is the other valid option).
+  - Replace `policyProfile: "OTP_EMAIL"` / `"OTP_SMS"` with `"OTP"` plus `additionalFields.otpChannel: "email"` or `"sms"`. The node's policy enum is `CLICK_ONLY`, `OTP`, `BIOMETRIC`, `CLICK_AND_OTP`, `CLICK_AND_BIOMETRIC`, `OTP_AND_BIOMETRIC`, `FULL`, `DIGITAL_CERT`, `CUSTOM`.
+  - `link-assinatura-whatsapp-telegram.json`: rewrite the broken "upload-then-reference-by-id" path. The previous design used `documentSource: "url"` on `Document > Upload` and `documentSource: "id"` on `Signing Session > Create`, neither of which the node supports (Document upload requires an existing `transactionId`; session create only accepts `binary` / `base64` / `none`). New design: stock `n8n-nodes-base.httpRequest` downloads the PDF as binary, then `Signing Session > Create` consumes it via `documentSource: "binary"`.
+  - `contrato-google-docs.json` and `pipeline-imobiliario.json`: fix the Google Docs node parameters — field is `title`, not `name`; pipeline-imobiliario was also missing `operation: "create"`.
+- **Templates README:** correct the `policyProfile` enum, which previously listed nonexistent values (`CLICKWRAP`, `OTP_EMAIL`, `OTP_SMS`, `BIOMETRIC_FACE`).
+- No changes to node code or credentials.
+
 ## 0.3.0 — 2026-04-23
 
 - **Owner Email / Owner Name** fields added to Additional Fields on both `Signing Session > Create` and `Envelope > Create`. When set, SignDocs Brasil automatically emails the signer an invitation to sign (if their email differs from the owner's) and notifies the owner by email as each signer completes. Omit the fields to keep the traditional "deliver the signing URL yourself and poll/webhook for completion" behavior.
