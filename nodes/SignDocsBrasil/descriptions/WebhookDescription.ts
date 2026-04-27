@@ -23,7 +23,9 @@ export const WEBHOOK_EVENT_OPTIONS = [
 	{ name: 'Signing Session Cancelled', value: 'SIGNING_SESSION.CANCELLED' },
 	{ name: 'Signing Session Expired', value: 'SIGNING_SESSION.EXPIRED' },
 	// Envelope events
+	{ name: 'Envelope Created', value: 'ENVELOPE.CREATED' },
 	{ name: 'Envelope All Signed', value: 'ENVELOPE.ALL_SIGNED' },
+	{ name: 'Envelope Expired', value: 'ENVELOPE.EXPIRED' },
 	// Operational events
 	{ name: 'Quota Warning', value: 'QUOTA.WARNING' },
 	{ name: 'API Deprecation Notice', value: 'API.DEPRECATION_NOTICE' },

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-04-27
+
+- **Webhook event catalog: added the two missing envelope events.** The Trigger node and `Webhook > Register` now expose `ENVELOPE.CREATED` (fires when a multi-signer envelope is created) and `ENVELOPE.EXPIRED` (fires when an envelope expires with one or more pending signatures). `ENVELOPE.ALL_SIGNED` was already in the list; with these two added, the n8n node now mirrors the full canonical `WebhookEventType` enum the API emits.
+  - `ENVELOPE.EXPIRED` is brand new behavior shipped today: when every signer in an envelope expires without signing, the API now flips the envelope status to `EXPIRED` and fires this event. Previously envelopes stayed in `ACTIVE` indefinitely with all signers dead. Pair `ENVELOPE.ALL_SIGNED` (success) and `ENVELOPE.EXPIRED` (failure) as the two terminal states for any envelope-driven workflow.
+  - `ENVELOPE.CREATED` was already being emitted by the API but missing from the n8n picker.
+- No changes to node code, credentials, or templates.
+
 ## 0.3.1 — 2026-04-25
 
 - **Templates fix:** all three workflow templates (`contrato-google-docs.json`, `link-assinatura-whatsapp-telegram.json`, `pipeline-imobiliario.json`) failed to execute in n8n because of invalid SignDocs node parameter values. Verified by importing each template into a clean n8n 2.17.7 instance with the community node loaded — every template raised `WorkflowHasIssuesError` before this release.
