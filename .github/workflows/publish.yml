@@ -8,7 +8,11 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # Required for npm provenance
+  # id-token: write — was required for the OIDC Trusted Publisher path. Removed
+  # because we publish with a Classic Automation NPM_TOKEN (Trusted Publisher
+  # setup is gated on TOTP/security-key 2FA on the npm account, which we
+  # haven't enabled). Re-add this permission and the --provenance flag below
+  # when Trusted Publisher is configured.
 
 jobs:
   publish:
@@ -34,8 +38,12 @@ jobs:
           # Scanner downloads from registry, so we validate after publish too
           echo "local pack + lint OK; scanner re-run post-publish in next step"
 
-      - name: Publish with provenance
-        run: npm publish --access public --provenance
+      - name: Publish
+        # No --provenance: it requires the OIDC Trusted Publisher binding, which
+        # in turn requires 2FA on the npm account. Using a Classic Automation
+        # token (NPM_TOKEN secret) instead. Loses the sigstore attestation but
+        # unblocks the release.
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
