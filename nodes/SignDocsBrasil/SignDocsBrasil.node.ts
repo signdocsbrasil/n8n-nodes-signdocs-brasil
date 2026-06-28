@@ -9,6 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, buildSigningUrl, parseMetadata } from './GenericFunctions';
 import { signingSessionOperations, signingSessionFields } from './descriptions/SigningSessionDescription';
+import { trustSessionOperations, trustSessionFields } from './descriptions/TrustSessionDescription';
 import { envelopeOperations, envelopeFields } from './descriptions/EnvelopeDescription';
 import { evidenceOperations, evidenceFields } from './descriptions/EvidenceDescription';
 import { documentOperations, documentFields } from './descriptions/DocumentDescription';
@@ -38,12 +39,15 @@ export class SignDocsBrasil implements INodeType {
 					{ name: 'Envelope', value: 'envelope' },
 					{ name: 'Evidence', value: 'evidence' },
 					{ name: 'Signing Session', value: 'signingSession' },
+					{ name: 'Trust Session', value: 'trustSession' },
 					{ name: 'Webhook', value: 'webhook' },
 				],
 				default: 'signingSession',
 			},
 			...signingSessionOperations,
 			...signingSessionFields,
+			...trustSessionOperations,
+			...trustSessionFields,
 			...envelopeOperations,
 			...envelopeFields,
 			...evidenceOperations,
@@ -68,6 +72,8 @@ export class SignDocsBrasil implements INodeType {
 
 				if (resource === 'signingSession') {
 					output = await executeSigningSession.call(this, operation, i);
+				} else if (resource === 'trustSession') {
+					output = await executeTrustSession.call(this, operation, i);
 				} else if (resource === 'envelope') {
 					output = await executeEnvelope.call(this, operation, i);
 				} else if (resource === 'evidence') {
@@ -178,6 +184,83 @@ async function executeSigningSession(
 	}
 
 	throw new NodeOperationError(this.getNode(), `Unknown signing-session operation: ${operation}`, { itemIndex: i });
+}
+
+/**
+ * Trust Session (Sessão de Confiança) — POST /v1/trust-sessions and friends.
+ * The endpoint is a thin facade over signing-sessions with
+ * purpose=ACTION_AUTHENTICATION pre-set, document rejected, action required.
+ * This handler mirrors that contract from the n8n side.
+ */
+async function executeTrustSession(
+	this: IExecuteFunctions,
+	operation: string,
+	i: number,
+): Promise<unknown> {
+	if (operation === 'create') {
+		const policyProfile = this.getNodeParameter('policyProfile', i) as string;
+		const actionType = this.getNodeParameter('actionType', i) as string;
+		const actionDescription = this.getNodeParameter('actionDescription', i) as string;
+		const signerName = this.getNodeParameter('signerName', i) as string;
+		const signerExternalId = this.getNodeParameter('signerExternalId', i) as string;
+		const additionalFields = this.getNodeParameter('additionalFields', i, {}) as Record<string, unknown>;
+
+		const request: Record<string, unknown> = {
+			policy: { profile: policyProfile },
+			action: {
+				type: actionType,
+				description: actionDescription,
+				...(additionalFields.actionReference ? { reference: additionalFields.actionReference } : {}),
+			},
+			signer: {
+				name: signerName,
+				userExternalId: signerExternalId,
+				...(additionalFields.signerEmail ? { email: additionalFields.signerEmail } : {}),
+				...(additionalFields.signerPhone ? { phone: additionalFields.signerPhone } : {}),
+				...(additionalFields.signerCpf ? { cpf: additionalFields.signerCpf } : {}),
+				...(additionalFields.signerCnpj ? { cnpj: additionalFields.signerCnpj } : {}),
+				...(additionalFields.signerBirthDate ? { birthDate: additionalFields.signerBirthDate } : {}),
+				...(additionalFields.otpChannel ? { otpChannel: additionalFields.otpChannel } : {}),
+			},
+		};
+
+		if (additionalFields.returnUrl) request.returnUrl = additionalFields.returnUrl;
+		if (additionalFields.cancelUrl) request.cancelUrl = additionalFields.cancelUrl;
+		if (additionalFields.locale) request.locale = additionalFields.locale;
+		if (additionalFields.expiresInMinutes) request.expiresInMinutes = additionalFields.expiresInMinutes;
+		if (additionalFields.ownerEmail || additionalFields.ownerName) {
+			request.owner = {
+				...(additionalFields.ownerEmail ? { email: additionalFields.ownerEmail } : {}),
+				...(additionalFields.ownerName ? { name: additionalFields.ownerName } : {}),
+			};
+		}
+		const metadata = parseMetadata(additionalFields.metadata as string | undefined);
+		if (metadata) request.metadata = metadata;
+
+		const session = await apiRequest.call<
+			IExecuteFunctions,
+			[{ method: 'POST'; path: string; body: unknown; idempotencyKey?: string }],
+			Promise<{ url: string; clientSecret: string; [k: string]: unknown }>
+		>(this, {
+			method: 'POST',
+			path: '/v1/trust-sessions',
+			body: request,
+			idempotencyKey: additionalFields.idempotencyKey as string | undefined,
+		});
+		return { ...session, signingUrl: buildSigningUrl(session.url, session.clientSecret) };
+	}
+
+	if (operation === 'getStatus') {
+		const sessionId = this.getNodeParameter('sessionId', i) as string;
+		return apiRequest.call(this, { method: 'GET', path: `/v1/trust-sessions/${sessionId}/status` });
+	}
+
+	if (operation === 'cancel') {
+		const sessionId = this.getNodeParameter('sessionId', i) as string;
+		return apiRequest.call(this, { method: 'POST', path: `/v1/trust-sessions/${sessionId}/cancel` });
+	}
+
+	throw new NodeOperationError(this.getNode(), `Unknown trust-session operation: ${operation}`, { itemIndex: i });
 }
 
 async function executeEnvelope(

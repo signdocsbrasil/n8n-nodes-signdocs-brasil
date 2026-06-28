@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-06-28
+
+- **New resource: Trust Session (Sessão de Confiança).** Wraps `POST /v1/trust-sessions` — authenticate a digital action without a document. Operations: Create, Get Status, Cancel.
+  - Use for KYC, loan disbursement approval (IN 138/2022 INSS consignado), VASP KYC reverification (Lei 14.478/2022), telemedicine consent (CFM 2.314/2022), notarial remote acts (Provimento 149/2023 CNJ), HR compliance acknowledgments, escrow release, transaction approval in ERPs/CRMs.
+  - Same hosted page, same biometric/OTP/SERPRO step machine, same evidence pack format as Signing Session — the page just shows "Sessão de Confiança" badge + the human-readable action description in place of a PDF preview.
+  - The form requires `Action Type` + `Action Description` (the thing being authenticated, surfaced to the signer and captured in the evidence pack), and hides all document-related fields. The `DIGITAL_CERT` profile is intentionally absent — ICP-Brasil A1 signing requires a document.
+  - Requires `featureFlags.trustSessionsEnabled = true` on the tenant + a `monthlyTrustSessions` quota, both provisioned per contract by SignDocs.
+
 ## 0.4.0 — 2026-04-27
 
 - **Webhook event catalog: added the two missing envelope events.** The Trigger node and `Webhook > Register` now expose `ENVELOPE.CREATED` (fires when a multi-signer envelope is created) and `ENVELOPE.EXPIRED` (fires when an envelope expires with one or more pending signatures). `ENVELOPE.ALL_SIGNED` was already in the list; with these two added, the n8n node now mirrors the full canonical `WebhookEventType` enum the API emits.
