@@ -76,7 +76,7 @@
         "resource": "signingSession",
         "operation": "create",
         "purpose": "DOCUMENT_SIGNATURE",
-        "policyProfile": "OTP",
+        "policyProfile": "CLICK_PLUS_OTP",
         "signerName": "={{$node[\"Google Sheets Trigger\"].json[\"signer_name\"]}}",
         "signerExternalId": "={{$node[\"Google Sheets Trigger\"].json[\"signer_id\"]}}",
         "documentSource": "binary",

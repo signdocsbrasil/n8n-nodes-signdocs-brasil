@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 — 2026-07-12
+
+- **Fix: Policy Profile dropdowns sent values the API rejects.** Signing Session, Envelope (Add Session) and Trust Session offered `OTP`, `CLICK_AND_OTP`, `CLICK_AND_BIOMETRIC`, `OTP_AND_BIOMETRIC`, `FULL` and `DIGITAL_CERT`, but the API's `policy.profile` only accepts `CLICK_ONLY`, `CLICK_PLUS_OTP`, `BIOMETRIC`, `BIOMETRIC_PLUS_OTP`, `DIGITAL_CERTIFICATE`, `BIOMETRIC_SERPRO`, `BIOMETRIC_SERPRO_AUTO_FALLBACK`, `BIOMETRIC_DOCUMENT_FALLBACK` and `CUSTOM` — every non-canonical choice failed with HTTP 400 "Invalid policy profile". Dropdowns now use the canonical values; `CLICK_AND_BIOMETRIC` and `FULL` were removed (no API equivalent — compose via `CUSTOM`).
+- **Fix: bundled workflow templates defaulted to `policyProfile: "OTP"`** and failed on execution; all three now use `CLICK_PLUS_OTP`.
+- Workflows saved with the old values keep failing until the profile is re-selected — open the node, pick the profile again, save.
+
 ## 0.5.0 — 2026-06-28
 
 - **New resource: Trust Session (Sessão de Confiança).** Wraps `POST /v1/trust-sessions` — authenticate a digital action without a document. Operations: Create, Get Status, Cancel.

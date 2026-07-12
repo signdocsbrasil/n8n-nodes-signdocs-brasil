@@ -31,7 +31,7 @@
         "resource": "signingSession",
         "operation": "create",
         "purpose": "DOCUMENT_SIGNATURE",
-        "policyProfile": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"policyProfile\"] || \"OTP\"}}",
+        "policyProfile": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"policyProfile\"] || \"CLICK_PLUS_OTP\"}}",
         "signerName": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerName\"]}}",
         "signerExternalId": "={{$node[\"Webhook · Receber requisição\"].json[\"body\"][\"signerExternalId\"]}}",
         "documentSource": "binary",

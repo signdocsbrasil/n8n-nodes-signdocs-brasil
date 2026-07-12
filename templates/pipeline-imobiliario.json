@@ -92,7 +92,7 @@
         "resource": "signingSession",
         "operation": "create",
         "purpose": "DOCUMENT_SIGNATURE",
-        "policyProfile": "OTP",
+        "policyProfile": "CLICK_PLUS_OTP",
         "signerName": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"nome\"]}}",
         "signerExternalId": "={{$node[\"Webhook · Lead recebido\"].json[\"body\"][\"leadId\"]}}",
         "documentSource": "binary",

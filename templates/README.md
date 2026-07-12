@@ -18,10 +18,10 @@ All templates need credentials replaced (placeholders marked `REPLACE` or `*_ID_
 
 ## Notes
 
-- `policyProfile` values available: `CLICK_ONLY`, `OTP`, `BIOMETRIC`, `CLICK_AND_OTP`, `CLICK_AND_BIOMETRIC`, `OTP_AND_BIOMETRIC`, `FULL`, `DIGITAL_CERT`, `CUSTOM`. For email vs SMS OTP, set `additionalFields.otpChannel` to `email` or `sms`. For A3/ICP-Brasil signing, use `DIGITAL_CERT` and let the signer pick A1 or A3 in the signing UI.
+- `policyProfile` values available: `CLICK_ONLY`, `CLICK_PLUS_OTP`, `BIOMETRIC`, `BIOMETRIC_PLUS_OTP`, `DIGITAL_CERTIFICATE`, `CUSTOM` (these are the API's canonical profile names; older `OTP`/`CLICK_AND_*`/`FULL`/`DIGITAL_CERT` values were rejected by the API and were fixed in v0.5.1). For email vs SMS OTP, set `additionalFields.otpChannel` to `email` or `sms`. For A3/ICP-Brasil signing, use `DIGITAL_CERTIFICATE` and let the signer pick A1 or A3 in the signing UI.
 - The SignDocs node exposes a `signingUrl` field that already combines `session.url` + `?cs=<clientSecret>` — use `{{$node["SignDocs · Criar sessão"].json["signingUrl"]}}` directly in messaging nodes.
 - For completion notifications, pair these flows with a separate workflow using the **SignDocs Brasil Trigger** node listening for `TRANSACTION.COMPLETED`.
 
 ## Publishing
 
-These templates mirror to `sign-docs-site-marketing/templates/` for direct download on the marketing gallery page at `https://www.signdocs.com.br/templates-n8n.html`.
+These templates mirror to `sign-docs-site-marketing/templates/` for direct download on the marketing gallery page at `https://www.signdocs.com.br/templates-n8n.html`, and to `external-api/docs-portal/downloads/n8n/` for the docs portal (`https://docs.signdocs.com.br/downloads/n8n/`). This directory is the source of truth — copy updated JSONs to both mirrors.
