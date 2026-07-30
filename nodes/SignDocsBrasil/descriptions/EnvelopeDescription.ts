@@ -126,9 +126,11 @@ export const envelopeFields: INodeProperties[] = [
 		displayName: 'Signer Index',
 		name: 'signerIndex',
 		type: 'number',
-		default: 0,
+		default: 1,
 		required: true,
-		description: 'Zero-based position of this signer in the envelope',
+		typeOptions: { minValue: 1 },
+		description:
+			'One-based position of this signer in the envelope: the first signer is 1 and the last is Total Signers. Sending 0 returns HTTP 400 "signerIndex must be a positive integer (1-based)".',
 		displayOptions: { show: { resource: ['envelope'], operation: ['addSession'] } },
 	},
 	{
