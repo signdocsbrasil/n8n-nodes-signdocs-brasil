@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2 — 2026-07-30
+
+- **Fix: Envelope > Add Session sent a zero-based `Signer Index`, which the API rejects.** The field defaulted to `0` and was described as "Zero-based position of this signer in the envelope", but `signerIndex` is **one-based**: the API validates `1..totalSigners` and rejects `0` with HTTP 400 "signerIndex must be a positive integer (1-based)". Anyone who accepted the default failed on the first signer, and a workflow indexing signers from 0 silently never added the last one — the envelope could never reach `ENVELOPE.ALL_SIGNED`. The field now defaults to `1`, enforces a minimum of `1`, and documents the range.
+- Existing workflows keep the value they were saved with: open Envelope > Add Session and change `Signer Index` from `0` to `1` (and shift every other signer up by one) before re-running.
+
+## 0.5.1 — 2026-07-12
+
+- **Fix: Policy Profile dropdowns sent values the API rejects.** Signing Session, Envelope (Add Session) and Trust Session offered `OTP`, `CLICK_AND_OTP`, `CLICK_AND_BIOMETRIC`, `OTP_AND_BIOMETRIC`, `FULL` and `DIGITAL_CERT`, but the API's `policy.profile` only accepts `CLICK_ONLY`, `CLICK_PLUS_OTP`, `BIOMETRIC`, `BIOMETRIC_PLUS_OTP`, `DIGITAL_CERTIFICATE`, `BIOMETRIC_SERPRO`, `BIOMETRIC_SERPRO_AUTO_FALLBACK`, `BIOMETRIC_DOCUMENT_FALLBACK` and `CUSTOM` — every non-canonical choice failed with HTTP 400 "Invalid policy profile". Dropdowns now use the canonical values; `CLICK_AND_BIOMETRIC` and `FULL` were removed (no API equivalent — compose via `CUSTOM`).
+- **Fix: bundled workflow templates defaulted to `policyProfile: "OTP"`** and failed on execution; all three now use `CLICK_PLUS_OTP`.
+- Workflows saved with the old values keep failing until the profile is re-selected — open the node, pick the profile again, save.
+
 ## 0.5.0 — 2026-06-28
 
 - **New resource: Trust Session (Sessão de Confiança).** Wraps `POST /v1/trust-sessions` — authenticate a digital action without a document. Operations: Create, Get Status, Cancel.
