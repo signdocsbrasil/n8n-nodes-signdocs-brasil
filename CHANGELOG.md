@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.6.0 — 2026-08-20
+
+**npm went straight from 0.4.0 to this release.** 0.5.0 and 0.5.1 were tagged and built but never
+reached the registry — the publish workflow's `NPM_TOKEN` had expired and the failure showed up
+only as a red check on a tag push. So installing 0.6.0 also brings everything listed under 0.5.0
+and 0.5.1 below.
+
+### Fixed
+
+- **The Trigger could no longer be re-activated once its registration was lost.** The API now
+  refuses to register a webhook URL it already holds, so that a re-clicked or retried registration
+  cannot permanently double a tenant's inbound event volume. The Trigger registered blindly on
+  every activation and only ever consulted n8n's own static data to decide whether it had one
+  already — so re-importing a workflow, moving it between instances, or a cleanup that failed
+  server-side left a row on the tenant with the local copy gone, and activation then failed with a
+  409 and no way out from inside n8n.
+
+  It now recognises that 409 and replaces the stale registration. The old one cannot be adopted:
+  the API returns its id but never its secret, which is issued once and is what this node verifies
+  incoming signatures with — adopting it would mean accepting deliveries it could not
+  authenticate. The URL carries this node's own identifier, so the row being replaced is always
+  this node's own. If the API declines to say which registration collided, the error now tells you
+  to remove it from the dashboard rather than failing opaquely.
+
+- **`Envelope > Add Session` accepts an Idempotency Key.** It is the call that spends quota, and
+  its response carries the only copy of that signer's client secret, but it was the one create in
+  the node that sent no key — so retrying a failed step added a second signer, charged again and
+  sent a second invitation. Use a **different key for every signer**: the API scopes its cache by
+  key and resolved path, and all signers on an envelope share that path, so one key reused across
+  them returns the first signer's session — including their client secret — for all of them.
+
+### Added
+
+- **`Signing Session > Link`** — `POST /v1/signing-sessions/{sessionId}/link`. Issues a fresh
+  signing URL for a session that is still active, without creating another transaction and
+  **without spending quota**. Signing links are single-use, so this is the way to reach a signer
+  whose link was consumed, lost, or never delivered — previously the only option was to cancel and
+  recreate, which cost quota and invalidated the original.
+  - Works for standalone and envelope sessions alike.
+  - The session must be active; a completed or cancelled one returns 409, since a link to a
+    finished session would authenticate nothing.
+  - The returned `url` is already complete — the client secret is in the query string — so it is
+    surfaced as-is under both `url` and `signingUrl`. Do not append `cs=` to it.
+  - It authorises the tenant, not an end user. If your workflow serves several people from one
+    SignDocs tenant, decide who is entitled to a link before minting it: the API cannot.
+
+### Note
+
+- `Webhook > Register` can now return 409 when the URL is already registered. The API's message
+  names the existing `webhookId` and n8n surfaces it unchanged; use `Webhook > Delete` first, or
+  register a different URL.
+
 ## 0.5.1 — 2026-07-12
 
 - **Fix: Policy Profile dropdowns sent values the API rejects.** Signing Session, Envelope (Add Session) and Trust Session offered `OTP`, `CLICK_AND_OTP`, `CLICK_AND_BIOMETRIC`, `OTP_AND_BIOMETRIC`, `FULL` and `DIGITAL_CERT`, but the API's `policy.profile` only accepts `CLICK_ONLY`, `CLICK_PLUS_OTP`, `BIOMETRIC`, `BIOMETRIC_PLUS_OTP`, `DIGITAL_CERTIFICATE`, `BIOMETRIC_SERPRO`, `BIOMETRIC_SERPRO_AUTO_FALLBACK`, `BIOMETRIC_DOCUMENT_FALLBACK` and `CUSTOM` — every non-canonical choice failed with HTTP 400 "Invalid policy profile". Dropdowns now use the canonical values; `CLICK_AND_BIOMETRIC` and `FULL` were removed (no API equivalent — compose via `CUSTOM`).
