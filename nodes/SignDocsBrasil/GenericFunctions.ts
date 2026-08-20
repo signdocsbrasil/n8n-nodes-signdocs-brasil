@@ -75,6 +75,53 @@ export async function apiRequest<T = unknown>(
 	}
 }
 
+/**
+ * True when POST /v1/webhooks was refused because an ACTIVE registration
+ * already carries this URL.
+ *
+ * The API started enforcing URL uniqueness so a re-clicked or retried
+ * registration could not permanently double a tenant's inbound event volume.
+ * That turned a call which always succeeded into one that can 409, and the
+ * trigger reaches it on every activation.
+ */
+export function isDuplicateWebhookUrlError(err: unknown): boolean {
+	const anyErr = err as {
+		statusCode?: number;
+		message?: string;
+		response?: { status?: number; body?: unknown; data?: unknown };
+	};
+	const status = anyErr.statusCode ?? anyErr.response?.status;
+	if (status !== 409) return false;
+	return /already registered/i.test(webhookErrorDetail(err));
+}
+
+/**
+ * The webhookId the API names in a duplicate-URL 409, or undefined.
+ *
+ * It arrives inside the human-readable `detail` rather than as a field of its
+ * own, so this reads it back out. Returning undefined is a normal outcome, not
+ * a failure — callers must cope with a 409 they cannot attribute to an id.
+ */
+export function extractWebhookId(err: unknown): string | undefined {
+	const match = /webhookId:\s*([A-Za-z0-9_-]+)/.exec(webhookErrorDetail(err));
+	return match?.[1];
+}
+
+function webhookErrorDetail(err: unknown): string {
+	const anyErr = err as {
+		message?: string;
+		response?: { body?: unknown; data?: unknown };
+	};
+	const body = anyErr.response?.body ?? anyErr.response?.data;
+	const fromBody =
+		typeof body === 'string'
+			? body
+			: typeof (body as { detail?: unknown })?.detail === 'string'
+				? ((body as { detail: string }).detail)
+				: '';
+	return `${anyErr.message ?? ''} ${fromBody}`;
+}
+
 export const WEBHOOK_SIGNATURE_TOLERANCE_SECONDS = 300;
 
 export function verifyWebhookSignature(

@@ -8,7 +8,12 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
-import { apiRequest, verifyWebhookSignature } from '../SignDocsBrasil/GenericFunctions';
+import {
+	apiRequest,
+	extractWebhookId,
+	isDuplicateWebhookUrlError,
+	verifyWebhookSignature,
+} from '../SignDocsBrasil/GenericFunctions';
 import { WEBHOOK_EVENT_OPTIONS } from '../SignDocsBrasil/descriptions/WebhookDescription';
 
 export class SignDocsBrasilTrigger implements INodeType {
@@ -72,13 +77,16 @@ export class SignDocsBrasilTrigger implements INodeType {
 					);
 				}
 
-				let response: { webhookId: string; secret: string };
-				try {
-					response = (await apiRequest.call(this, {
+				const register = async () =>
+					(await apiRequest.call(this, {
 						method: 'POST',
 						path: '/v1/webhooks',
 						body: { url: webhookUrl, events },
 					})) as { webhookId: string; secret: string };
+
+				let response: { webhookId: string; secret: string };
+				try {
+					response = await register();
 				} catch (err) {
 					const anyErr = err as { statusCode?: number; response?: { status?: number }; message?: string };
 					const status = anyErr.statusCode ?? anyErr.response?.status;
@@ -87,7 +95,32 @@ export class SignDocsBrasilTrigger implements INodeType {
 							`SignDocs Brasil rejected the webhook URL (${webhookUrl}). The URL must be publicly reachable over https. If you are running n8n locally, set WEBHOOK_URL to a tunnel endpoint.`,
 						);
 					}
-					throw err;
+
+					// The API enforces URL uniqueness, so a registration left behind by
+					// this same node blocks re-activation. checkExists only consults
+					// n8n's static data, which is lost when a workflow is re-imported or
+					// moved between instances — and delete() is best-effort, so a failed
+					// removal leaves the row on the tenant with the local copy gone.
+					// Either way activation would fail permanently with no way out from
+					// inside n8n.
+					//
+					// The stale row cannot be adopted: the API returns its id but never
+					// its secret, which is shown once at creation and is what this node
+					// verifies signatures with. Adopting it would mean accepting
+					// deliveries it could not authenticate. So drop it and register
+					// again. The URL carries this node's own identifier, so the row
+					// being replaced is always this node's own.
+					if (!isDuplicateWebhookUrlError(err)) throw err;
+
+					const staleId = extractWebhookId(err);
+					if (!staleId) {
+						throw new ApplicationError(
+							`SignDocs Brasil already has a webhook registered for this URL (${webhookUrl}), and did not say which. Delete it from the SignDocs dashboard, then activate this workflow again.`,
+						);
+					}
+
+					await apiRequest.call(this, { method: 'DELETE', path: `/v1/webhooks/${staleId}` });
+					response = await register();
 				}
 
 				const staticData = this.getWorkflowStaticData('node');
