@@ -11,6 +11,13 @@ export const signingSessionOperations: INodeProperties[] = [
 			{ name: 'Cancel', value: 'cancel', action: 'Cancel a signing session' },
 			{ name: 'Create', value: 'create', action: 'Create a signing session', description: 'Create a new signing session and return its URL' },
 			{ name: 'Get Status', value: 'getStatus', action: 'Get signing session status' },
+			{
+				name: 'Link',
+				value: 'link',
+				action: 'Mint a new signing link',
+				description:
+					'Issue a fresh signing URL for a session that is still active, without creating another transaction and without spending quota. Signing links are single-use, so this is how you reach a signer whose link was consumed, lost or never delivered.',
+			},
 		],
 		default: 'create',
 	},
@@ -23,7 +30,7 @@ export const signingSessionFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		displayOptions: { show: { resource: ['signingSession'], operation: ['getStatus', 'cancel'] } },
+		displayOptions: { show: { resource: ['signingSession'], operation: ['getStatus', 'cancel', 'link'] } },
 	},
 	{
 		displayName: 'Purpose',

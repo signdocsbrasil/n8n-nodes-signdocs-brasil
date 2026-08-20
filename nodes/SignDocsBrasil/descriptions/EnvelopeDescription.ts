@@ -170,6 +170,15 @@ export const envelopeFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['envelope'], operation: ['addSession'] } },
 		options: [
 			{ displayName: 'Cancel URL', name: 'cancelUrl', type: 'string', default: '' },
+			{
+				displayName: 'Idempotency Key',
+				name: 'idempotencyKey',
+				type: 'string',
+				typeOptions: { password: true },
+				default: '',
+				description:
+					'Makes a retry of this step return the first result instead of adding a second signer, charging quota again and sending a second invitation. Use a different key for every signer — one key reused across an envelope returns the first signer\'s session, including their client secret, for all of them.',
+			},
 			{ displayName: 'Metadata (JSON)', name: 'metadata', type: 'json', default: '{}' },
 			{
 				displayName: 'OTP Channel',

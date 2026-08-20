@@ -37,7 +37,7 @@ Obtain credentials from your SignDocs tenant admin portal.
 
 | Resource | Operations |
 |----------|-----------|
-| Signing Session | Create, Get Status, Cancel |
+| Signing Session | Create, Get Status, Cancel, Link |
 | Trust Session | Create, Get Status, Cancel |
 | Envelope | Create, Get, Add Session, Combined Stamp |
 | Evidence | Get |

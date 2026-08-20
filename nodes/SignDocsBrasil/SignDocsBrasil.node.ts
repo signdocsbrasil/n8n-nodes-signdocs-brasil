@@ -183,6 +183,24 @@ async function executeSigningSession(
 		return apiRequest.call(this, { method: 'POST', path: `/v1/signing-sessions/${sessionId}/cancel` });
 	}
 
+	if (operation === 'link') {
+		const sessionId = this.getNodeParameter('sessionId', i) as string;
+		// Returned as `signingUrl` as well as `url`, so a workflow can read the
+		// same field here as after a create. It is NOT passed through
+		// buildSigningUrl: this endpoint hands back a complete link with the
+		// client secret already in the query string, and appending a second one
+		// would break it.
+		//
+		// No idempotency key, deliberately. The link is single-use, so a retry
+		// has to mint a fresh one — replaying a cached response would hand back
+		// a URL that has already been consumed.
+		const minted = (await apiRequest.call(this, {
+			method: 'POST',
+			path: `/v1/signing-sessions/${sessionId}/link`,
+		})) as { url: string; [k: string]: unknown };
+		return { ...minted, signingUrl: minted.url };
+	}
+
 	throw new NodeOperationError(this.getNode(), `Unknown signing-session operation: ${operation}`, { itemIndex: i });
 }
 
@@ -344,12 +362,18 @@ async function executeEnvelope(
 
 		const session = await apiRequest.call<
 			IExecuteFunctions,
-			[{ method: 'POST'; path: string; body: unknown }],
+			[{ method: 'POST'; path: string; body: unknown; idempotencyKey?: string }],
 			Promise<{ url: string; clientSecret: string; [k: string]: unknown }>
 		>(this, {
 			method: 'POST',
 			path: `/v1/envelopes/${envelopeId}/sessions`,
 			body: request,
+			// Distinct per signer. The API scopes its cache by key and resolved
+			// path, and every signer on an envelope shares that path, so one key
+			// reused across signers would serve signer 2 the response cached for
+			// signer 1 — and that response carries the only copy of signer 1's
+			// clientSecret.
+			idempotencyKey: additional.idempotencyKey as string | undefined,
 		});
 		return { ...session, signingUrl: buildSigningUrl(session.url, session.clientSecret) };
 	}
